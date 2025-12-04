@@ -27,13 +27,13 @@ git clone
 
 cd PneumoScan
 
-python3 -m venv venv
+	python3 -m venv venv
 
-source venv/bin/activate
+	source venv/bin/activate
 
-pip install -r requirements.txt
+	pip install -r requirements.txt
 
-python manage.py runserver
+	python manage.py runserver
 
 ---
 
@@ -59,11 +59,14 @@ models/
 
   ## 🔽 How to run the project:
   
-	1.	Download the model files from this link:
+1.	Download the model files from this link:
 👉  (https://drive.google.com/uc?export=download&id=1YLDd4MPwJFlWNfCJsWCFY0jqT7URNGPW)
-	2.	Place them inside the models/ folder in the project directory
-	3.	Run the project normally:
-    python manage.py runserver
+	
+2.	Place them inside the models/ folder in the project directory
+	
+3.	Run the project normally:
+
+  		python manage.py runserver
 
 ## ⚠️ Disclaimer
 This project is for **educational/research purposes only**  
