@@ -1,29 +1,39 @@
-# Byte-compiled / cache
+# Python / Django
 __pycache__/
-*.pyc
+*.py[cod]
+*.log
+
+# SQLite DB
+*.sqlite3
 
 # Virtual environment
 venv/
 env/
-.venv/
 
-# Django stuff
-db.sqlite3
-*.sqlite3
-staticfiles/
+# Environment variables
+.env
+.env.*
+
+# macOS junk
+.DS_Store
+
+# Uploaded user files (X-rays)
 media/
-uploads/
 
-# Machine learning models (do NOT upload)
+# ML model files — large & private
 models/
 *.h5
 *.pkl
 *.joblib
 
-# OS files
-.DS_Store
-Thumbs.db
+# Training data (not for GitHub)
+data/
+ml/
 
-# Secrets / environment
-.env
-*.env
+# Local temp files
+README.md.save
+start_server.command
+
+# IDE
+.vscode/
+.idea/
