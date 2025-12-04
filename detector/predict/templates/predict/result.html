@@ -1,0 +1,205 @@
+{% extends "predict/base.html" %}
+{% load static %}
+{% block title %}Result - PneumoScan{% endblock %}
+
+{% block content %}
+<!-- result.html — PneumoScan polished UI -->
+<style>
+  /* Small, self-contained styling for the results panel */
+  .ps-panel {
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  }
+  .ps-hero {
+    background: linear-gradient(90deg, #0b4f6c, #167fa6);
+    color: white;
+    padding: 20px;
+  }
+  .ps-hero h1 { font-size: 1.45rem; margin:0; font-weight:700; }
+  .ps-sub { opacity: .92; font-size: .95rem; margin-top:6px; }
+  .ps-badge {
+    padding: .45rem .8rem;
+    font-weight:700;
+    border-radius: 999px;
+    letter-spacing: .4px;
+  }
+  .ps-left {
+    background: #fbfdff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:18px;
+    border-right: 1px solid rgba(15,23,42,0.04);
+  }
+  .ps-left img { max-height:420px; object-fit:contain; border-radius:8px; }
+  .ps-body { padding: 18px 20px; }
+  .ps-progress {
+    height: 22px;
+    border-radius: 12px;
+    background: linear-gradient(90deg,#f6f9fb,#ffffff);
+    border: 1px solid rgba(15,23,42,0.03);
+  }
+  .ps-progress .progress-bar { border-radius: 12px; transition: width .8s cubic-bezier(.2,.9,.2,1); font-weight:700; }
+  .ps-small { color:#6b7280; font-size:.92rem; }
+  .ps-actions .btn { min-width:150px; }
+  @media (max-width:767px) {
+    .ps-hero h1 { font-size:1.2rem; }
+    .ps-left { padding:12px; }
+  }
+</style>
+
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-xl-10 col-lg-11 col-md-12">
+      <div class="card ps-panel">
+
+        <!-- Hero -->
+        <div class="ps-hero d-flex align-items-center justify-content-between">
+          <div>
+            <h1>PneumoScan — Analysis Ready</h1>
+            <div class="ps-sub">Automated AI screening result for the uploaded chest X-ray — <strong>not a medical diagnosis</strong>.</div>
+          </div>
+
+          <div class="text-end">
+            {% if prediction == "PNEUMONIA" %}
+              <div class="ps-badge bg-danger text-white">PNEUMONIA</div>
+            {% else %}
+              <div class="ps-badge bg-success text-white">NORMAL</div>
+            {% endif %}
+            <div class="ps-small mt-1">Model: CNN feature extractor + AdaBoost</div>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="row g-0">
+          <!-- Image -->
+          <div class="col-md-5 ps-left">
+            {% if image_url %}
+              <a href="{{ image_url }}" target="_blank" title="Open image in new tab">
+                <img src="{{ image_url }}" alt="Uploaded X-ray">
+              </a>
+            {% else %}
+              <div class="text-center">
+                <svg width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="#9aa4ae" stroke-width="1.2">
+                  <rect x="3" y="3" width="18" height="18" rx="3"></rect>
+                  <path d="M8 14s1.5-2 4-2 4 2 4 2"></path>
+                  <circle cx="12" cy="11" r="2"></circle>
+                </svg>
+                <div class="ps-small mt-2">No image available</div>
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Result summary -->
+          <div class="col-md-7">
+            <div class="ps-body">
+
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h5 class="mb-1">Result Summary</h5>
+                  <div class="ps-small">Clear, concise outcome and recommended next steps.</div>
+                </div>
+                <div class="text-end">
+                  <div class="ps-small text-muted">Confidence</div>
+                  <div id="ps-numeric-large" class="h4 fw-bold mt-1">—</div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <div class="ps-progress mb-2" role="progressbar" aria-label="Confidence">
+                  <div id="ps-bar" class="progress-bar {% if prediction == 'PNEUMONIA' %}bg-danger{% else %}bg-success{% endif %}" style="width:0%" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">0%</div>
+                </div>
+                <div class="ps-small">Probability score (higher = more confident). This is model output; confirm clinically if needed.</div>
+              </div>
+
+              <hr>
+
+              <div class="mb-3">
+                <h6 class="fw-semibold">Interpretation</h6>
+                {% if prediction == "PNEUMONIA" %}
+                  <p class="text-muted mb-0">
+                    The model detected patterns associated with pneumonia. Please consult a licensed healthcare professional for confirmation and next steps (clinical exam, radiologist review).
+                  </p>
+                {% else %}
+                  <p class="text-muted mb-0">
+                    No radiographic signs of pneumonia were flagged by the model. If symptoms persist or worsen, seek clinical evaluation — imaging is one piece of diagnosis.
+                  </p>
+                {% endif %}
+              </div>
+
+              <div class="mt-4 d-flex gap-2 flex-wrap ps-actions">
+                <a href="{% url 'predict:home' %}" class="btn btn-outline-primary">
+                  ← Upload another
+                </a>
+
+                <button id="ps-download" class="btn btn-dark">Download Report</button>
+
+                {% if image_url %}
+                  <a href="{{ image_url }}" target="_blank" class="btn btn-light border">Open Image</a>
+                {% endif %}
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="text-center mt-3 text-muted small">PneumoScan • Not a medical device • v1.0</div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden printable report -->
+<div id="ps-report" style="display:none;">
+  <div style="font-family: Arial, Helvetica, sans-serif; color:#111; padding:20px;">
+    <h2>PneumoScan — Prediction Report</h2>
+    <p><strong>Prediction:</strong> {{ prediction }}</p>
+    <p><strong>Probability:</strong> {{ probability|default:"0.0"|floatformat:4 }}</p>
+    <p><strong>Notes:</strong> Automated screening result — not a medical diagnosis.</p>
+    {% if image_url %}
+      <img src="{{ image_url }}" alt="xray" style="max-width:600px; display:block; margin-top:10px;">
+    {% endif %}
+  </div>
+</div>
+
+{% endblock content %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Read the probability passed from Django (expected 0.0-1.0). Fallback to 0.
+  const raw = Number({{ probability|default:"0.0" }});
+  const prob = Number.isFinite(raw) ? raw : 0.0;
+  const percent = Math.round(Math.max(0, Math.min(1, prob)) * 100);
+
+  const bar = document.getElementById('ps-bar');
+  const numeric = document.getElementById('ps-numeric-large');
+
+  if (numeric) numeric.textContent = (prob * 100).toFixed(2) + '%';
+  if (bar) {
+    setTimeout(() => {
+      bar.style.width = percent + '%';
+      bar.setAttribute('aria-valuenow', percent);
+      bar.textContent = percent + '%';
+    }, 120);
+  }
+
+  // Download/print report
+  const downloadBtn = document.getElementById('ps-download');
+  if (downloadBtn) {
+    downloadBtn.addEventListener('click', function () {
+      const content = document.getElementById('ps-report').innerHTML;
+      const w = window.open('', '_blank');
+      w.document.write(`
+        <html><head><title>PneumoScan Report</title>
+        <style>body{font-family:Arial,Helvetica,sans-serif;margin:20px;color:#111}h2{margin-top:0}</style>
+        </head><body>${content}</body></html>`);
+      w.document.close();
+      setTimeout(() => w.print(), 300);
+    });
+  }
+});
+</script>
+{% endblock scripts %}

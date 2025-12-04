@@ -1,0 +1,33 @@
+/* small, tasteful styles */
+:root{
+  --accent: #4f46e5;
+  --muted: #6b7280;
+}
+.bg-gradient{
+  background: linear-gradient(180deg, rgba(79,70,229,0.06), rgba(99,102,241,0.02));
+  min-height: 100vh;
+}
+
+/* dashed border style for drag area */
+.border-dashed{
+  border-style: dashed !important;
+  border-width: 2px !important;
+  border-color: rgba(107,114,128,0.25);
+}
+
+/* preview image */
+#previewImg {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+/* subtle focus */
+#dropZone:focus-within {
+  box-shadow: 0 0 0 0.25rem rgba(79,70,229,0.12);
+}
+
+/* disabled submit state */
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

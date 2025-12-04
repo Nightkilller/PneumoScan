@@ -1,0 +1,29 @@
+# Byte-compiled / cache
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Django stuff
+db.sqlite3
+*.sqlite3
+staticfiles/
+media/
+uploads/
+
+# Machine learning models (do NOT upload)
+models/
+*.h5
+*.pkl
+*.joblib
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets / environment
+.env
+*.env

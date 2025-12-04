@@ -1,0 +1,248 @@
+{% extends "predict/base.html" %}
+{% load static %}
+{% block title %}PneumoScan - Upload & Predict{% endblock %}
+
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+
+      <!-- UPLOAD CARD -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-body">
+          <h4 class="mb-3">Upload Chest X-ray</h4>
+          <form id="upload-form" method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            <div class="mb-3">
+              <input class="form-control" type="file" id="image-input" name="image" accept="image/*" />
+            </div>
+
+            <div class="d-flex gap-2">
+              <button id="predict-btn" type="button" class="btn btn-primary">Predict</button>
+              <button id="clear-btn" type="button" class="btn btn-outline-secondary">Clear</button>
+              <div id="upload-spinner" class="ms-auto align-self-center" style="display:none;">
+                <div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>
+                <small class="text-muted ms-2">Analyzing...</small>
+              </div>
+            </div>
+
+            <div id="client-preview" class="mt-3" style="display:none;">
+              <label class="form-label small text-muted">Preview</label>
+              <div>
+                <img id="preview-img" src="#" alt="preview" class="img-fluid rounded shadow-sm" style="max-height:200px; object-fit:contain;">
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- RESULT CARD (initially hidden) -->
+      <div id="result-card" class="card shadow border-0" style="display:none;">
+        <div class="card-body">
+          <div class="d-flex align-items-start gap-3">
+            <div style="width:40%;">
+              <img id="result-image" src="" alt="uploaded" class="img-fluid rounded" style="max-height:220px; object-fit:contain;">
+            </div>
+
+            <div style="flex:1;">
+              <h5 class="mb-1">Prediction</h5>
+
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                  <span id="prediction-badge" class="badge fs-6"></span>
+                </div>
+                <div class="text-end small text-muted">
+                  <div>Raw probability: <span id="raw-prob">0.00</span></div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <div class="d-flex justify-content-between mb-1">
+                  <div class="fw-semibold">Confidence (Pneumonia)</div>
+                  <div class="text-muted" id="conf-label">0%</div>
+                </div>
+                <div class="progress" style="height:18px;">
+                  <div id="conf-bar" class="progress-bar" role="progressbar" style="width:0%" aria-valuemin="0" aria-valuemax="100">0%</div>
+                </div>
+              </div>
+
+              <div id="interpretation" class="mb-3 text-muted small"></div>
+
+              <div class="d-flex gap-2">
+                <button id="try-another" class="btn btn-outline-primary btn-sm">← Try another</button>
+                <button id="download-report" class="btn btn-secondary btn-sm">Download Report</button>
+                <a id="open-image" href="#" target="_blank" class="btn btn-light btn-sm border">Open Image</a>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALERT / ERROR -->
+      <div id="result-alert" class="alert alert-danger mt-3" role="alert" style="display:none;"></div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  
+document.addEventListener('DOMContentLoaded', function () {
+  const imageInput = document.getElementById('image-input');
+  const predictBtn = document.getElementById('predict-btn');
+  const clearBtn = document.getElementById('clear-btn');
+  const spinner = document.getElementById('upload-spinner');
+
+  const preview = document.getElementById('client-preview');
+  const previewImg = document.getElementById('preview-img');
+
+  const resultCard = document.getElementById('result-card');
+  const resultImage = document.getElementById('result-image');
+  const predictionBadge = document.getElementById('prediction-badge');
+  const rawProb = document.getElementById('raw-prob');
+  const confLabel = document.getElementById('conf-label');
+  const confBar = document.getElementById('conf-bar');
+  const interpretation = document.getElementById('interpretation');
+  const tryAnotherBtn = document.getElementById('try-another');
+  const downloadBtn = document.getElementById('download-report');
+  const openImageLink = document.getElementById('open-image');
+  const alertBox = document.getElementById('result-alert');
+
+  imageInput.addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) {
+      preview.style.display = 'none';
+      return;
+    }
+    previewImg.src = URL.createObjectURL(file);
+    preview.style.display = 'block';
+  });
+
+  clearBtn.addEventListener('click', function () {
+    imageInput.value = '';
+    preview.style.display = 'none';
+    resultCard.style.display = 'none';
+    alertBox.style.display = 'none';
+  });
+
+  tryAnotherBtn.addEventListener('click', function () {
+    imageInput.value = '';
+    preview.style.display = 'none';
+    resultCard.style.display = 'none';
+    alertBox.style.display = 'none';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  predictBtn.addEventListener('click', async function () {
+    alertBox.style.display = 'none';
+    if (!imageInput.files || !imageInput.files[0]) {
+      alertBox.textContent = 'Please choose an image first.';
+      alertBox.style.display = 'block';
+      return;
+    }
+
+    const file = imageInput.files[0];
+    const formData = new FormData();
+    formData.append('image', file);
+
+    spinner.style.display = 'flex';
+    predictBtn.disabled = true;
+    clearBtn.disabled = true;
+
+    try {
+      console.log('Sending request to server (fetch)...');
+
+      const resp = await fetch("{% url 'predict:predict_image' %}?json=1", {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin'   // include cookies (CSRF) if required later
+      });
+
+      console.log('Response status:', resp.status, resp.statusText);
+      const text = await resp.text();
+      // Try to parse JSON. If it's invalid, print full text to console and show to user.
+      let data = null;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error('Failed to parse JSON. Server returned text:', text);
+        alertBox.textContent = 'Server returned invalid JSON. See console for full response.';
+        alertBox.style.display = 'block';
+        throw new Error('Invalid JSON from server. Check server logs/console.');
+      }
+
+      console.log('JSON payload from server:', data);
+
+      if (data.error) {
+        throw new Error(data.error + (data.details ? ': ' + data.details : ''));
+      }
+
+      const prediction = data.prediction || 'UNKNOWN';
+      const probability = Number(data.probability || 0);
+      const imgPath = data.image_path || '';
+
+      // set UI
+      if (prediction === 'PNEUMONIA') {
+        predictionBadge.className = 'badge bg-danger fs-6';
+        predictionBadge.textContent = 'PNEUMONIA';
+        interpretation.textContent = 'Model indicates likelihood of pneumonia. This is not medical advice.';
+      } else {
+        predictionBadge.className = 'badge bg-success fs-6';
+        predictionBadge.textContent = 'NORMAL';
+        interpretation.textContent = 'No pneumonia indicators detected. If in doubt, see a medical professional.';
+      }
+
+      rawProb.textContent = probability.toFixed(4);
+      const percent = Math.round(Math.max(0, Math.min(100, probability * 100)));
+      confLabel.textContent = percent + '%';
+      confBar.style.width = percent + '%';
+      confBar.setAttribute('aria-valuenow', percent);
+      confBar.textContent = percent + '%';
+      confBar.className = prediction === 'PNEUMONIA' ? 'progress-bar bg-danger' : 'progress-bar bg-success';
+
+      if (imgPath) {
+        resultImage.src = imgPath;
+        openImageLink.href = imgPath;
+      } else {
+        resultImage.src = previewImg.src;
+        openImageLink.href = previewImg.src;
+      }
+
+      resultCard.style.display = 'block';
+      window.scrollTo({ top: resultCard.offsetTop - 20, behavior: 'smooth' });
+
+      downloadBtn.onclick = function () {
+        const reportHtml = `
+          <html><head><title>PneumoScan Report</title></head><body>
+            <h2>PneumoScan — Prediction Report</h2>
+            <p><strong>Prediction:</strong> ${prediction}</p>
+            <p><strong>Confidence:</strong> ${percent}%</p>
+            <p><strong>Raw probability:</strong> ${probability.toFixed(4)}</p>
+            <div><img src="${resultImage.src}" style="max-width:600px;"></div>
+            <p style="margin-top:16px;">This is an AI-assisted result, not a diagnosis.</p>
+          </body></html>`;
+        const w = window.open('', '_blank');
+        w.document.write(reportHtml);
+        w.document.close();
+        setTimeout(() => w.print(), 200);
+      };
+
+    } catch (err) {
+      console.error('Prediction flow error:', err);
+      alertBox.textContent = err.message || 'Prediction failed - see console.';
+      alertBox.style.display = 'block';
+    } finally {
+      spinner.style.display = 'none';
+      predictBtn.disabled = false;
+      clearBtn.disabled = false;
+    }
+  });
+
+});
+</script>
+{% endblock %}
