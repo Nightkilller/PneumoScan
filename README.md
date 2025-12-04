@@ -46,6 +46,24 @@ static/          → CSS + JS
 
 
 ---
+## 📌 Model Files Not Included
+
+This project requires trained machine learning model files:
+models/
+ ├── cnn_model.h5
+ └── booster.pkl
+ These files are not included in the GitHub repository because:
+	•	Model files are large
+	•	They are created during training
+	•	GitHub is not meant for storing ML models
+
+  ## 🔽 How to run the project:
+  
+	1.	Download the model files from this link:
+👉  (https://drive.google.com/uc?export=download&id=1YLDd4MPwJFlWNfCJsWCFY0jqT7URNGPW)
+	2.	Place them inside the models/ folder in the project directory
+	3.	Run the project normally:
+    python manage.py runserver
 
 ## ⚠️ Disclaimer
 This project is for **educational/research purposes only**  
